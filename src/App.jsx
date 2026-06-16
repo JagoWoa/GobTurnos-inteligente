@@ -2,7 +2,6 @@ import {
   Accessibility,
   AlertCircle,
   BarChart3,
-  Bell,
   Bot,
   CalendarClock,
   CheckCircle2,
@@ -36,6 +35,15 @@ import {
 import { useEffect, useState } from "react";
 import { NavLink, Navigate, Outlet, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { isSupabaseConfigured } from "./lib/supabaseClient";
+
+const citizenProfile = {
+  id: "0912345678",
+  name: "Jose Luis Sarabia Calderon",
+  email: "jose@example.com",
+  phone: "0999999999",
+  address: "Guayaquil, Ecuador",
+  contact: "Correo electronico",
+};
 
 const userTurns = [
   {
@@ -85,23 +93,74 @@ const requirements = {
 };
 
 const agencyOptions = [
-  { name: "Agencia Centro", distance: "1.2 km", load: 28, recommended: true },
-  { name: "Agencia Norte", distance: "4.8 km", load: 46, recommended: false },
-  { name: "Agencia Sur", distance: "6.1 km", load: 61, recommended: false },
+  { name: "Agencia Centro", distance: "1.2 km", load: 28, estimatedWait: "12 min", recommended: true },
+  { name: "Agencia Norte", distance: "4.8 km", load: 46, estimatedWait: "21 min", recommended: false },
+  { name: "Agencia Sur", distance: "6.1 km", load: 61, estimatedWait: "32 min", recommended: false },
 ];
+
+const wcagChecks = [
+  "Sin contenido multimedia: no requiere subtitulos, transcripcion ni audiodescripcion.",
+  "Todo se puede usar con teclado y foco visible.",
+  "Atajos con Alt disponibles y se pueden desactivar.",
+  "Labels, ayudas y mensajes de estado en formularios.",
+  "No se usan gestos, arrastre ni movimiento del dispositivo.",
+  "Texto ampliable hasta 200% y modo alto contraste.",
+];
+
+const nonApplicableChecks = [
+  "Audio y video: no se usan archivos multimedia, por eso no requiere transcripcion, subtitulos ni audiodescripcion.",
+  "Control de audio: no existe audio automatico.",
+  "Gestos complejos, arrastre y movimiento del dispositivo: todas las acciones tienen alternativa por boton o teclado.",
+  "Destellos: la interfaz no usa parpadeos ni animaciones de riesgo.",
+];
+
+const keyboardShortcuts = [
+  { keys: "Alt + 1", label: "Solicitar turno", path: "/app/solicitar-turno" },
+  { keys: "Alt + 2", label: "Requisitos", path: "/app/requisitos" },
+  { keys: "Alt + 3", label: "Mis turnos", path: "/app/mis-turnos" },
+  { keys: "Alt + 4", label: "Perfil", path: "/app/perfil" },
+  { keys: "Alt + 5", label: "Accesibilidad", path: "/app/accesibilidad" },
+];
+
+const helpByPath = {
+  "/app/solicitar-turno": "Completa tus datos, elige tramite, agencia, fecha y hora. Luego revisa la informacion antes de confirmar.",
+  "/app/requisitos": "Selecciona el tipo de tramite para revisar documentos, costo y tiempo estimado antes de ir a la agencia.",
+  "/app/mis-turnos": "Aqui puedes revisar tus turnos y probar las acciones de QR, reagendar o cancelar. Las acciones criticas piden confirmacion.",
+  "/app/perfil": "Mantén actualizados tus datos de contacto para recibir comprobantes y avisos sobre tus turnos.",
+  "/app/accesibilidad": "Ajusta texto, contraste, movimiento y atajos segun tus necesidades. Los cambios se guardan en este navegador.",
+};
 
 function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("gobturnos-theme") || "light");
   const [fontScale, setFontScale] = useState(() => Number(localStorage.getItem("gobturnos-font-scale")) || 1);
+  const [highContrast, setHighContrast] = useState(() => localStorage.getItem("gobturnos-contrast") === "true");
+  const [calmMode, setCalmMode] = useState(() => localStorage.getItem("gobturnos-calm") === "true");
+  const [shortcutsEnabled, setShortcutsEnabled] = useState(() => localStorage.getItem("gobturnos-shortcuts") !== "false");
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
+    document.documentElement.dataset.contrast = highContrast ? "high" : "normal";
+    document.documentElement.dataset.motion = calmMode ? "reduced" : "normal";
     document.documentElement.style.setProperty("--font-scale", fontScale.toString());
     localStorage.setItem("gobturnos-theme", theme);
     localStorage.setItem("gobturnos-font-scale", fontScale.toString());
-  }, [theme, fontScale]);
+    localStorage.setItem("gobturnos-contrast", highContrast.toString());
+    localStorage.setItem("gobturnos-calm", calmMode.toString());
+    localStorage.setItem("gobturnos-shortcuts", shortcutsEnabled.toString());
+  }, [theme, fontScale, highContrast, calmMode, shortcutsEnabled]);
 
-  const accessibility = { theme, setTheme, fontScale, setFontScale };
+  const accessibility = {
+    theme,
+    setTheme,
+    fontScale,
+    setFontScale,
+    highContrast,
+    setHighContrast,
+    calmMode,
+    setCalmMode,
+    shortcutsEnabled,
+    setShortcutsEnabled,
+  };
 
   return (
     <Routes>
@@ -138,10 +197,10 @@ function AuthPage({ mode }) {
       ? "Crear cuenta ciudadana"
       : "Recuperar contrasena";
   const subtitle = isLogin
-    ? "Accede para solicitar turnos, revisar requisitos o atender desde ventanilla."
+    ? "Accede al prototipo ciudadano para solicitar turnos, revisar requisitos y gestionar tus datos."
     : isSignup
       ? "Registra tus datos basicos para gestionar turnos propios o de representados."
-      : "Te enviaremos instrucciones para restablecer el acceso cuando Supabase Auth este conectado.";
+      : "Flujo visual para recuperar acceso. El envio real de correo se conectara con Supabase.";
 
   const submit = (event) => {
     event.preventDefault();
@@ -152,7 +211,7 @@ function AuthPage({ mode }) {
       return;
     }
     if (isRecovery) return;
-    setNotice("Validacion local correcta. La autenticacion real se conectara con Supabase Auth.");
+    setNotice("Campos correctos. Entrando al prototipo ciudadano.");
     navigate("/app/solicitar-turno");
   };
 
@@ -266,15 +325,15 @@ function AuthPage({ mode }) {
             <ShieldCheck aria-hidden="true" />
             <span>{isSupabaseConfigured ? "Supabase configurado" : "Supabase pendiente por .env"}</span>
           </div>
-          <h2>Turnos sin filas innecesarias</h2>
+          <h2>Turnos claros, sin filas innecesarias</h2>
           <p>
-            La interfaz prioriza accesibilidad WCAG 2.2, lenguaje ciudadano y sugerencias
-            inteligentes para elegir horarios con menor espera.
+            Prototipo web para validar el proceso ciudadano: solicitar turno, consultar requisitos,
+            revisar tiempos estimados y gestionar datos personales con lenguaje simple.
           </p>
           <div className="mini-grid">
-            <Metric label="Espera estimada" value="12 min" />
+            <Metric label="Tiempo estimado" value="4 min" />
             <Metric label="Agencia sugerida" value="Centro" />
-            <Metric label="Accesibilidad" value="A + AA" />
+            <Metric label="Checklist WCAG" value="En prueba" />
           </div>
         </div>
       </aside>
@@ -296,6 +355,23 @@ function AppShell({ accessibility }) {
       "/app/ventanilla": "Atencion de ventanilla",
       "/app/supervisor": "Monitoreo",
     }[location.pathname] || "GobTurnos";
+
+  useEffect(() => {
+    document.title = `${pageTitle} | GobTurnos`;
+  }, [pageTitle]);
+
+  useEffect(() => {
+    const handleShortcut = (event) => {
+      if (!accessibility.shortcutsEnabled || !event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+      const shortcut = keyboardShortcuts.find((item) => item.keys.endsWith(event.key));
+      if (!shortcut) return;
+      event.preventDefault();
+      navigate(shortcut.path);
+    };
+
+    window.addEventListener("keydown", handleShortcut);
+    return () => window.removeEventListener("keydown", handleShortcut);
+  }, [accessibility.shortcutsEnabled, navigate]);
 
   return (
     <div className="app-shell">
@@ -328,7 +404,7 @@ function AppShell({ accessibility }) {
       <div className="content-area">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Sistema web institucional</p>
+            <p className="eyebrow">Prototipo ciudadano</p>
             <h1>{pageTitle}</h1>
           </div>
           <div className="topbar-actions">
@@ -341,14 +417,15 @@ function AppShell({ accessibility }) {
             </button>
             <span className="live-pill" role="status">
               <span aria-hidden="true" />
-              En linea
+              Prototipo local
             </span>
-            <button className="icon-button" aria-label="Ver notificaciones">
-              <Bell aria-hidden="true" />
-            </button>
           </div>
         </header>
         <main id="contenido" className="page-content">
+          <section className="help-strip" aria-labelledby="page-help-title">
+            <strong id="page-help-title">Ayuda de esta pantalla</strong>
+            <p>{helpByPath[location.pathname] || "Usa el menu lateral o los atajos Alt + numero para moverte por el prototipo."}</p>
+          </section>
           <Outlet />
         </main>
       </div>
@@ -358,6 +435,8 @@ function AppShell({ accessibility }) {
 
 function ScheduleTurn() {
   const [status, setStatus] = useState("");
+  const [useProfileData, setUseProfileData] = useState(false);
+  const selectedAgency = agencyOptions[0];
 
   const confirmTurn = (event) => {
     event.preventDefault();
@@ -367,7 +446,7 @@ function ScheduleTurn() {
       form.reportValidity();
       return;
     }
-    setStatus("Turno validado localmente. Listo para guardar cuando conectemos Supabase.");
+    setStatus("Datos revisados. En la version conectada se guardara el turno y se emitira el codigo QR.");
   };
 
   return (
@@ -375,23 +454,31 @@ function ScheduleTurn() {
       <article className="work-panel" aria-labelledby="schedule-form-title">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">RF1 Gestion de turnos</p>
-            <h2 id="schedule-form-title">Datos del turno</h2>
+            <p className="eyebrow">RF1 Solicitud de turno</p>
+            <h2 id="schedule-form-title">Elige donde y cuando atenderte</h2>
           </div>
           <CalendarClock aria-hidden="true" />
         </div>
+        <p className="panel-copy">
+          Completar este formulario deberia tomar alrededor de 4 minutos. Los campos marcados como
+          obligatorios se validan antes de continuar.
+        </p>
         <form className="form-grid" onSubmit={confirmTurn}>
-          <Field id="cedula" label="Numero de cedula" inputMode="numeric" autoComplete="off" required pattern="[0-9]{10}" maxLength="10" helper="Ingrese 10 digitos." />
-          <Field id="nombres" label="Nombres completos" autoComplete="name" required minLength="5" helper="Nombre y apellido del ciudadano." />
-          <Field id="correo" label="Correo electronico" type="email" autoComplete="email" required helper="Debe tener formato correo@dominio." />
-          <Field id="telefono" label="Numero telefonico" type="tel" autoComplete="tel" required pattern="[0-9+ ]{7,15}" helper="Solo numeros, espacios o signo +." />
+          <label className="terms-check span-2 use-profile-check">
+            <input type="checkbox" checked={useProfileData} onChange={() => setUseProfileData(!useProfileData)} />
+            <span>Usar mis datos guardados para evitar escribirlos otra vez.</span>
+          </label>
+          <Field id="cedula" label="Numero de cedula" defaultValue={useProfileData ? citizenProfile.id : ""} inputMode="numeric" autoComplete="off" required pattern="[0-9]{10}" maxLength="10" helper="Ingrese 10 digitos." error="La cedula debe tener exactamente 10 digitos numericos." />
+          <Field id="nombres" label="Nombres completos" defaultValue={useProfileData ? citizenProfile.name : ""} autoComplete="name" required minLength="5" helper="Nombre y apellido del ciudadano." error="Escribe nombre y apellido completos." />
+          <Field id="correo" label="Correo electronico" defaultValue={useProfileData ? citizenProfile.email : ""} type="email" autoComplete="email" required helper="Debe tener formato correo@dominio." error="Ingresa un correo valido, por ejemplo nombre@correo.com." />
+          <Field id="telefono" label="Numero telefonico" defaultValue={useProfileData ? citizenProfile.phone : ""} type="tel" autoComplete="tel" required pattern="[0-9+ ]{7,15}" helper="Solo numeros, espacios o signo +." error="Ingresa entre 7 y 15 caracteres usando numeros, espacios o signo +." />
           <SelectField id="tramite" label="Tipo de tramite" options={["Cedulacion", "Pasaporte", "Certificado municipal"]} />
           <SelectField id="agencia" label="Agencia" options={["Agencia Centro", "Agencia Norte", "Agencia Sur"]} />
           <Field id="fecha" label="Fecha" type="date" required />
           <SelectField id="hora" label="Hora disponible" options={["09:30", "10:15", "11:00", "14:30"]} />
           <button className="primary-button span-2" type="submit">
             <QrCode aria-hidden="true" />
-            Confirmar y generar QR
+            Revisar datos del turno
           </button>
           {status && <p className="form-status span-2" role="status">{status}</p>}
         </form>
@@ -401,18 +488,23 @@ function ScheduleTurn() {
         <div className="ai-orbit" aria-hidden="true">
           <Sparkles />
         </div>
-        <p className="eyebrow">IA recomendada</p>
-        <h2 id="ai-title">Horario sugerido: 09:30 AM</h2>
+        <p className="eyebrow">Sugerencia visible</p>
+        <h2 id="ai-title">Mejor opcion: {selectedAgency.name}, 09:30</h2>
         <p>
-          Recomendacion basada en menor congestion estimada, tiempos promedio de atencion y
-          disponibilidad por agencia.
+          Se muestra una recomendacion simple con distancia, carga y espera estimada para que el
+          ciudadano no dependa solo del color.
         </p>
+        <div className="summary-card">
+          <span>Espera estimada</span>
+          <strong>{selectedAgency.estimatedWait}</strong>
+          <small>Duracion aproximada del tramite: 20 min.</small>
+        </div>
         <div className="agency-list">
           {agencyOptions.map((agency) => (
             <div className="agency-row" key={agency.name}>
               <div>
                 <strong>{agency.name}</strong>
-                <span>{agency.distance} de distancia</span>
+                <span>{agency.distance} - espera {agency.estimatedWait}</span>
               </div>
               <meter min="0" max="100" value={agency.load} aria-label={`Carga ${agency.name}: ${agency.load}%`} />
               {agency.recommended && <span className="tag">Sugerida</span>}
@@ -435,6 +527,10 @@ function RequirementsPage() {
           </div>
           <Search aria-hidden="true" />
         </div>
+        <p className="panel-copy">
+          Esta consulta evita viajes innecesarios. El usuario puede revisar documentos, costo y
+          tiempo aproximado antes de confirmar un turno.
+        </p>
         <form className="form-stack">
           <SelectField id="req-tramite" label="Tipo de tramite" options={["Cedula", "Pasaporte", "Certificado municipal"]} />
           <SelectField id="subcategoria" label="Subcategoria" options={["Primera vez", "Renovacion", "Perdida"]} />
@@ -465,8 +561,8 @@ function RequirementsPage() {
         <div className="assistant-note" role="status">
           <Bot aria-hidden="true" />
           <p>
-            Asistente: para renovacion por perdida, lleva tambien la denuncia o constancia
-            correspondiente. Costo estimado: $16. Tiempo aproximado: 20 minutos.
+            Ayuda: para renovacion por perdida, lleva tambien la denuncia o constancia
+            correspondiente. Costo estimado: $16. Tiempo aproximado de atencion: 20 minutos.
           </p>
         </div>
       </article>
@@ -485,7 +581,7 @@ function ProfilePage() {
       form.reportValidity();
       return;
     }
-    setStatus("Perfil validado. Al conectar Supabase se guardara en la tabla protegida por RLS.");
+    setStatus("Datos revisados. En la version conectada se actualizaran en tu perfil ciudadano.");
   };
 
   return (
@@ -493,17 +589,21 @@ function ProfilePage() {
       <article className="work-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">RF7 Gestion de perfil</p>
-            <h2>Datos propios</h2>
+            <p className="eyebrow">RF7 Perfil ciudadano</p>
+            <h2>Mis datos de contacto</h2>
           </div>
           <UserRound aria-hidden="true" />
         </div>
+        <p className="panel-copy">
+          Mantener estos datos actualizados permite recibir comprobantes y avisos sobre cambios de
+          turno. No se muestran detalles tecnicos de seguridad porque no aportan a la tarea del ciudadano.
+        </p>
         <form className="form-grid" onSubmit={saveProfile}>
-          <Field id="profile-id" label="Numero de cedula" defaultValue="0912345678" inputMode="numeric" pattern="[0-9]{10}" maxLength="10" required helper="Identificador principal, no editable en produccion sin validacion institucional." />
-          <Field id="profile-name" label="Nombres completos" defaultValue="Jose Luis Sarabia Calderon" autoComplete="name" required minLength="5" />
-          <Field id="profile-email" label="Correo electronico" type="email" defaultValue="jose@example.com" autoComplete="email" required />
-          <Field id="profile-phone" label="Numero telefonico" type="tel" defaultValue="0999999999" autoComplete="tel" pattern="[0-9+ ]{7,15}" required />
-          <Field id="profile-address" label="Direccion referencial" defaultValue="Guayaquil, Ecuador" autoComplete="street-address" minLength="6" />
+          <Field id="profile-id" label="Numero de cedula" defaultValue={citizenProfile.id} inputMode="numeric" pattern="[0-9]{10}" maxLength="10" required helper="Identificador principal, no editable en produccion sin validacion institucional." error="La cedula debe tener 10 digitos." />
+          <Field id="profile-name" label="Nombres completos" defaultValue={citizenProfile.name} autoComplete="name" required minLength="5" error="Escribe nombre y apellido completos." />
+          <Field id="profile-email" label="Correo electronico" type="email" defaultValue={citizenProfile.email} autoComplete="email" required error="Ingresa un correo valido." />
+          <Field id="profile-phone" label="Numero telefonico" type="tel" defaultValue={citizenProfile.phone} autoComplete="tel" pattern="[0-9+ ]{7,15}" required error="Ingresa un telefono valido." />
+          <Field id="profile-address" label="Direccion referencial" defaultValue={citizenProfile.address} autoComplete="street-address" minLength="6" error="La direccion debe tener al menos 6 caracteres." />
           <SelectField id="profile-contact" label="Canal preferido" options={["Correo electronico", "SMS", "WhatsApp"]} />
           <button className="primary-button span-2" type="submit">
             <Save aria-hidden="true" />
@@ -516,16 +616,16 @@ function ProfilePage() {
       <aside className="work-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">Seguridad de datos</p>
-            <h2>Proteccion prevista</h2>
+            <p className="eyebrow">Uso para el ciudadano</p>
+            <h2>Para que sirven estos datos</h2>
           </div>
-          <ShieldCheck aria-hidden="true" />
+          <Mail aria-hidden="true" />
         </div>
-        <ul className="security-list">
-          <li><LockIcon /> Campos validados antes de enviar.</li>
-          <li><LockIcon /> Escritura futura solo para el usuario autenticado.</li>
-          <li><LockIcon /> RLS obligatorio en tablas publicas de Supabase.</li>
-          <li><LockIcon /> Secretos LLM y service_role fuera del cliente.</li>
+        <ul className="security-list practical-list">
+          <li><CheckCircle2 aria-hidden="true" /> Enviar comprobantes y recordatorios.</li>
+          <li><CheckCircle2 aria-hidden="true" /> Avisar cambios de fecha, agencia u horario.</li>
+          <li><CheckCircle2 aria-hidden="true" /> Reusar datos y evitar escribirlos en cada tramite.</li>
+          <li><CheckCircle2 aria-hidden="true" /> Mantener un historial consultable de atenciones.</li>
         </ul>
       </aside>
     </section>
@@ -533,16 +633,27 @@ function ProfilePage() {
 }
 
 function AccessibilityPage({ accessibility }) {
-  const { theme, setTheme, fontScale, setFontScale } = accessibility;
+  const {
+    theme,
+    setTheme,
+    fontScale,
+    setFontScale,
+    highContrast,
+    setHighContrast,
+    calmMode,
+    setCalmMode,
+    shortcutsEnabled,
+    setShortcutsEnabled,
+  } = accessibility;
   const decrease = () => setFontScale(Math.max(0.9, Number((fontScale - 0.1).toFixed(1))));
-  const increase = () => setFontScale(Math.min(1.3, Number((fontScale + 0.1).toFixed(1))));
+  const increase = () => setFontScale(Math.min(2, Number((fontScale + 0.1).toFixed(1))));
 
   return (
     <section className="work-grid two-columns">
       <article className="work-panel">
         <div className="panel-heading">
           <div>
-            <p className="eyebrow">WCAG 2.2 A + AA</p>
+            <p className="eyebrow">Checklist WCAG 2.2</p>
             <h2>Preferencias de accesibilidad</h2>
           </div>
           <Accessibility aria-hidden="true" />
@@ -551,7 +662,7 @@ function AccessibilityPage({ accessibility }) {
           <div className="control-row">
             <div>
               <strong>Tamano de letra</strong>
-              <span>Actual: {Math.round(fontScale * 100)}%</span>
+              <span>Actual: {Math.round(fontScale * 100)}%. Se permite hasta 200%.</span>
             </div>
             <div className="stepper" aria-label="Cambiar tamano de letra">
               <button className="icon-button" type="button" onClick={decrease} aria-label="Disminuir letra">
@@ -579,6 +690,66 @@ function AccessibilityPage({ accessibility }) {
               {theme === "dark" ? "Oscuro" : "Claro"}
             </button>
           </div>
+
+          <div className="control-row">
+            <div>
+              <strong>Alto contraste</strong>
+              <span>{highContrast ? "Activo para mejorar legibilidad" : "Disponible para baja vision"}</span>
+            </div>
+            <button
+              type="button"
+              className={`switch ${highContrast ? "is-on" : ""}`}
+              role="switch"
+              aria-checked={highContrast}
+              onClick={() => setHighContrast(!highContrast)}
+            >
+              <span aria-hidden="true" />
+              {highContrast ? "Activo" : "Inactivo"}
+            </button>
+          </div>
+
+          <div className="control-row">
+            <div>
+              <strong>Pausar movimiento</strong>
+              <span>{calmMode ? "Actualizaciones visuales pausadas" : "Reduce distracciones si lo necesitas"}</span>
+            </div>
+            <button
+              type="button"
+              className={`switch ${calmMode ? "is-on" : ""}`}
+              role="switch"
+              aria-checked={calmMode}
+              onClick={() => setCalmMode(!calmMode)}
+            >
+              <span aria-hidden="true" />
+              {calmMode ? "Pausado" : "Normal"}
+            </button>
+          </div>
+
+          <div className="control-row">
+            <div>
+              <strong>Atajos de teclado</strong>
+              <span>{shortcutsEnabled ? "Activos con combinaciones Alt + numero" : "Desactivados para evitar acciones accidentales"}</span>
+            </div>
+            <button
+              type="button"
+              className={`switch ${shortcutsEnabled ? "is-on" : ""}`}
+              role="switch"
+              aria-checked={shortcutsEnabled}
+              onClick={() => setShortcutsEnabled(!shortcutsEnabled)}
+            >
+              <span aria-hidden="true" />
+              {shortcutsEnabled ? "Activos" : "Inactivos"}
+            </button>
+          </div>
+
+          <div className="shortcut-panel" aria-label="Lista de atajos disponibles">
+            {keyboardShortcuts.map((shortcut) => (
+              <div className="shortcut-row" key={shortcut.keys}>
+                <kbd>{shortcut.keys}</kbd>
+                <span>{shortcut.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </article>
 
@@ -586,61 +757,105 @@ function AccessibilityPage({ accessibility }) {
         <div className="panel-heading">
           <div>
             <p className="eyebrow">Revision rapida</p>
-            <h2>Criterios aplicados</h2>
+            <h2>Evidencia para la prueba</h2>
           </div>
           <CheckCircle2 aria-hidden="true" />
         </div>
         <ul className="check-list">
-          <li><CheckCircle2 aria-hidden="true" /> Foco visible para teclado.</li>
-          <li><CheckCircle2 aria-hidden="true" /> Labels asociados a formularios.</li>
-          <li><CheckCircle2 aria-hidden="true" /> Contraste de controles e iconos.</li>
-          <li><CheckCircle2 aria-hidden="true" /> Modo claro/oscuro persistente.</li>
+          {wcagChecks.map((item) => (
+            <li key={item}><CheckCircle2 aria-hidden="true" /> {item}</li>
+          ))}
         </ul>
+        <div className="non-applicable-box">
+          <h3>Criterios no aplicables en este prototipo</h3>
+          <ul className="check-list compact-list">
+            {nonApplicableChecks.map((item) => (
+              <li key={item}><AlertCircle aria-hidden="true" /> {item}</li>
+            ))}
+          </ul>
+        </div>
       </aside>
     </section>
   );
 }
 
 function MyTurns() {
+  const [pendingAction, setPendingAction] = useState(null);
+
+  const askConfirmation = (turn, action) => {
+    setPendingAction({ turn, action });
+  };
+
+  const confirmAction = () => {
+    if (!pendingAction) return;
+    setPendingAction(null);
+  };
+
   return (
     <section className="work-panel">
       <div className="panel-heading">
         <div>
           <p className="eyebrow">RF3 Administracion de turnos</p>
-          <h2>Turnos registrados</h2>
+          <h2>Mis turnos registrados</h2>
         </div>
         <TicketCheck aria-hidden="true" />
       </div>
-      <div className="turn-table" role="table" aria-label="Listado de turnos">
-        <div className="table-row table-head" role="row">
-          <span role="columnheader">Codigo</span>
-          <span role="columnheader">Tramite</span>
-          <span role="columnheader">Agencia</span>
-          <span role="columnheader">Fecha</span>
-          <span role="columnheader">Estado</span>
-          <span role="columnheader">Acciones</span>
-        </div>
-        {userTurns.map((turn) => (
-          <div className="table-row" role="row" key={turn.code}>
-            <strong role="cell">{turn.code}</strong>
-            <span role="cell">{turn.procedure}</span>
-            <span role="cell">{turn.agency}</span>
-            <span role="cell">
-              {turn.date}, {turn.hour}
-            </span>
-            <span role="cell" className="status-badge">
-              {turn.status}
-            </span>
-            <span role="cell" className="row-actions">
-              <button className="icon-button" aria-label={`Ver QR del turno ${turn.code}`}>
-                <QrCode aria-hidden="true" />
-              </button>
-              <button className="text-button">Reagendar</button>
-              <button className="danger-button">Cancelar</button>
-            </span>
+      <p className="panel-copy">
+        Las acciones aparecen con texto e icono para no depender solo del color. Cancelar o
+        reagendar debera pedir confirmacion antes de guardar cambios reales.
+      </p>
+      {pendingAction && (
+        <div className="confirmation-box" role="alert">
+          <div>
+            <strong>Confirma la accion</strong>
+            <p>
+              Vas a {pendingAction.action} el turno {pendingAction.turn.code} de {pendingAction.turn.procedure}.
+              Esta accion se guardara cuando el sistema este conectado.
+            </p>
           </div>
-        ))}
-      </div>
+          <div className="confirmation-actions">
+            <button className="secondary-button" type="button" onClick={() => setPendingAction(null)}>
+              Volver
+            </button>
+            <button className={pendingAction.action === "cancelar" ? "danger-button" : "primary-button"} type="button" onClick={confirmAction}>
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+      <table className="turn-table">
+        <caption>Listado de turnos registrados del ciudadano</caption>
+        <thead>
+          <tr>
+            <th scope="col">Codigo</th>
+            <th scope="col">Tramite</th>
+            <th scope="col">Agencia</th>
+            <th scope="col">Fecha</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {userTurns.map((turn) => (
+            <tr key={turn.code}>
+              <th scope="row">{turn.code}</th>
+              <td>{turn.procedure}</td>
+              <td>{turn.agency}</td>
+              <td>{turn.date}, {turn.hour}</td>
+              <td><span className="status-badge">{turn.status}</span></td>
+              <td>
+                <div className="row-actions">
+                  <button className="icon-button" aria-label={`Ver QR del turno ${turn.code}`}>
+                    <QrCode aria-hidden="true" />
+                  </button>
+                  <button className="text-button" type="button" onClick={() => askConfirmation(turn, "reagendar")}>Reagendar</button>
+                  <button className="danger-button" type="button" onClick={() => askConfirmation(turn, "cancelar")}>Cancelar</button>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </section>
   );
 }
@@ -749,8 +964,8 @@ function InstitutionalAccess({ role }) {
         <ShieldCheck aria-hidden="true" />
       </div>
       <p>
-        Este modulo no forma parte del menu ciudadano. Cuando conectemos Supabase, el acceso se
-        habilitara solo para cuentas institucionales con rol protegido por politicas de seguridad.
+        Este modulo no aparece en el menu ciudadano para evitar confusiones. En la version conectada,
+        funcionarios y supervisores entraran con credenciales institucionales.
       </p>
       <NavLink className="secondary-button" to="/app/solicitar-turno">
         Volver al panel ciudadano
@@ -792,20 +1007,20 @@ function TermsPage() {
   );
 }
 
-function LockIcon() {
-  return <ShieldCheck aria-hidden="true" />;
-}
-
 function Field({ id, label, icon, type = "text", helper, ...props }) {
+  const { error, ...inputProps } = props;
   const helpId = helper ? `${id}-help` : undefined;
+  const errorId = error ? `${id}-error` : undefined;
+  const describedBy = [helpId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <label className="field" htmlFor={id}>
       <span>{label}</span>
       <div className="input-wrap">
         {icon}
-        <input id={id} name={id} type={type} aria-describedby={helpId} {...props} />
+        <input id={id} name={id} type={type} aria-describedby={describedBy} {...inputProps} />
       </div>
       {helper && <small id={helpId} className="field-help">{helper}</small>}
+      {error && <small id={errorId} className="field-error">{error}</small>}
     </label>
   );
 }
