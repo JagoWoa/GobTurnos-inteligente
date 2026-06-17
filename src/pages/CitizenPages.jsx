@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { Field, SelectField } from "../components/FormControls";
+import { PreferenceSwitch } from "../components/PreferenceSwitch";
 import {
   agencyOptions,
   citizenProfile,
@@ -234,10 +235,16 @@ export function AccessibilityPage({ accessibility }) {
     setFontScale,
     highContrast,
     setHighContrast,
-    calmMode,
-    setCalmMode,
     shortcutsEnabled,
     setShortcutsEnabled,
+    audioGuide,
+    setAudioGuide,
+    letterSpacing,
+    setLetterSpacing,
+    dyslexiaMode,
+    setDyslexiaMode,
+    colorBlindMode,
+    setColorBlindMode,
   } = accessibility;
   const decrease = () => setFontScale(Math.max(0.9, Number((fontScale - 0.1).toFixed(1))));
   const increase = () => setFontScale(Math.min(2, Number((fontScale + 0.1).toFixed(1))));
@@ -280,8 +287,11 @@ export function AccessibilityPage({ accessibility }) {
           </div>
 
           <PreferenceSwitch label="Alto contraste" active={highContrast} onToggle={() => setHighContrast(!highContrast)} activeText="Activo para mejorar legibilidad" inactiveText="Disponible para baja vision" onLabel="Activo" offLabel="Inactivo" />
-          <PreferenceSwitch label="Pausar movimiento" active={calmMode} onToggle={() => setCalmMode(!calmMode)} activeText="Actualizaciones visuales pausadas" inactiveText="Reduce distracciones si lo necesitas" onLabel="Pausado" offLabel="Normal" />
-          <PreferenceSwitch label="Atajos de teclado" active={shortcutsEnabled} onToggle={() => setShortcutsEnabled(!shortcutsEnabled)} activeText="Activos con combinaciones Alt + numero" inactiveText="Desactivados para evitar acciones accidentales" onLabel="Activos" offLabel="Inactivos" />
+          <PreferenceSwitch label="Atajos de teclado" active={shortcutsEnabled} onToggle={() => setShortcutsEnabled(!shortcutsEnabled)} activeText="Activos: Alt + numero y flechas para mover el foco" inactiveText="Desactivados para evitar acciones accidentales" onLabel="Activos" offLabel="Inactivos" />
+          <PreferenceSwitch label="Audio descripcion" active={audioGuide} onToggle={() => setAudioGuide(!audioGuide)} activeText="Lee en voz alta el control al pasar encima o enfocarlo" inactiveText="Disponible para apoyo auditivo durante la navegacion" onLabel="Activa" offLabel="Inactiva" />
+          <PreferenceSwitch label="Separar aun mas las letras" active={letterSpacing} onToggle={() => setLetterSpacing(!letterSpacing)} activeText="Espaciado amplio entre letras y palabras" inactiveText="Ayuda a lectura lenta o baja vision" onLabel="Amplio" offLabel="Normal" />
+          <PreferenceSwitch label="Modo dislexia" active={dyslexiaMode} onToggle={() => setDyslexiaMode(!dyslexiaMode)} activeText="Tipografia simple, mas altura de linea y lectura mas calmada" inactiveText="Disponible para mejorar reconocimiento de texto" onLabel="Activo" offLabel="Inactivo" />
+          <PreferenceSwitch label="Modo daltonico" active={colorBlindMode} onToggle={() => setColorBlindMode(!colorBlindMode)} activeText="Paleta azul/naranja y estados reforzados con texto" inactiveText="Evita depender solo de verde/rojo" onLabel="Activo" offLabel="Inactivo" />
 
           <div className="shortcut-panel" aria-label="Lista de atajos disponibles">
             {keyboardShortcuts.map((shortcut) => (
@@ -290,6 +300,14 @@ export function AccessibilityPage({ accessibility }) {
                 <span>{shortcut.label}</span>
               </div>
             ))}
+            <div className="shortcut-row">
+              <kbd>Flechas</kbd>
+              <span>Mover foco si la navegacion con flechas esta activa.</span>
+            </div>
+            <div className="shortcut-row">
+              <kbd>Enter</kbd>
+              <span>Activar el boton, enlace o control enfocado.</span>
+            </div>
           </div>
         </div>
       </article>
@@ -398,20 +416,5 @@ export function MyTurns() {
         </tbody>
       </table>
     </section>
-  );
-}
-
-function PreferenceSwitch({ label, active, onToggle, activeText, inactiveText, onLabel, offLabel }) {
-  return (
-    <div className="control-row">
-      <div>
-        <strong>{label}</strong>
-        <span>{active ? activeText : inactiveText}</span>
-      </div>
-      <button type="button" className={`switch ${active ? "is-on" : ""}`} role="switch" aria-checked={active} onClick={onToggle}>
-        <span aria-hidden="true" />
-        {active ? onLabel : offLabel}
-      </button>
-    </div>
   );
 }

@@ -61,12 +61,13 @@ export const agencyOptions = [
 ];
 
 export const wcagChecks = [
-  "Sin contenido multimedia: no requiere subtitulos, transcripcion ni audiodescripcion.",
-  "Todo se puede usar con teclado y foco visible.",
-  "Atajos con Alt disponibles y se pueden desactivar.",
+  "Menu flotante de accesibilidad visible en todo el sitio.",
+  "Todo se puede usar con teclado, foco visible y navegacion opcional con flechas.",
+  "Atajos con Alt y flechas disponibles desde una sola opcion y se pueden desactivar.",
+  "Audio descripcion opcional al pasar encima de un control o enfocarlo con teclado.",
   "Labels, ayudas y mensajes de estado en formularios.",
   "No se usan gestos, arrastre ni movimiento del dispositivo.",
-  "Texto ampliable hasta 200% y modo alto contraste.",
+  "Texto ampliable hasta 200%, espaciado amplio, alto contraste, modo dislexia y modo daltonico.",
 ];
 
 export const nonApplicableChecks = [
