@@ -58,6 +58,19 @@ export function ScheduleTurn() {
           Completar este formulario deberia tomar alrededor de 4 minutos. Los campos marcados como
           obligatorios se validan antes de continuar.
         </p>
+        <section className="tutorial-video" aria-labelledby="video-tutorial-title">
+          <h3 id="video-tutorial-title">Video tutorial para sacar turno</h3>
+          <div className="video-frame-wrap">
+            <iframe
+              src="https://www.youtube.com/embed/mDXAsKbRMWk"
+              title="Video tutorial para sacar turno"
+              loading="lazy"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
+          </div>
+        </section>
         <form className="form-grid" onSubmit={confirmTurn}>
           <label className="terms-check span-2 use-profile-check">
             <input type="checkbox" checked={useProfileData} onChange={() => setUseProfileData(!useProfileData)} />
